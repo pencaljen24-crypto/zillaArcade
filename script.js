@@ -52,8 +52,38 @@ const gameIframe = document.getElementById('gameIframe');
 const playerTitle = document.getElementById('playerTitle');
 const playerDescription = document.getElementById('playerDescription');
 const iframeContainer = document.getElementById('iframeContainer');
+const recentSection = document.getElementById('recentSection');
+const recentGrid = document.getElementById('recentGrid');
 
 let isFullscreen = false;
+let recentGames = JSON.parse(localStorage.getItem('recentGames') || '[]');
+
+function createGameCard(game) {
+  const card = document.createElement('div');
+  card.className = 'glass-card group cursor-pointer rounded-2xl overflow-hidden';
+  card.onclick = () => playGame(game);
+  
+  card.innerHTML = `
+    <div class="aspect-video overflow-hidden relative">
+      <img 
+        src="${game.thumbnail}" 
+        alt="${game.title}"
+        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+        referrerpolicy="no-referrer"
+      >
+      <div class="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/20 transition-colors flex items-center justify-center">
+        <div class="bg-white text-black p-3 rounded-full opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"></rect><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"></path></svg>
+        </div>
+      </div>
+    </div>
+    <div class="p-5 flex flex-col gap-1">
+      <h3 class="font-bold text-lg group-hover:text-indigo-400 transition-colors">${game.title}</h3>
+      <p class="text-sm text-white/40 line-clamp-2">${game.description}</p>
+    </div>
+  `;
+  return card;
+}
 
 function renderGames(filteredGames) {
   gameGrid.innerHTML = '';
@@ -63,32 +93,33 @@ function renderGames(filteredGames) {
   } else {
     noResults.classList.add('hidden');
     filteredGames.forEach(game => {
-      const card = document.createElement('div');
-      card.className = 'glass-card group cursor-pointer rounded-2xl overflow-hidden';
-      card.onclick = () => playGame(game);
-      
-      card.innerHTML = `
-        <div class="aspect-video overflow-hidden relative">
-          <img 
-            src="${game.thumbnail}" 
-            alt="${game.title}"
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            referrerpolicy="no-referrer"
-          >
-          <div class="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/20 transition-colors flex items-center justify-center">
-            <div class="bg-white text-black p-3 rounded-full opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"></rect><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"></path></svg>
-            </div>
-          </div>
-        </div>
-        <div class="p-5 flex flex-col gap-1">
-          <h3 class="font-bold text-lg group-hover:text-indigo-400 transition-colors">${game.title}</h3>
-          <p class="text-sm text-white/40 line-clamp-2">${game.description}</p>
-        </div>
-      `;
-      gameGrid.appendChild(card);
+      gameGrid.appendChild(createGameCard(game));
     });
   }
+}
+
+function renderRecentGames() {
+  if (recentGames.length === 0) {
+    recentSection.classList.add('hidden');
+    return;
+  }
+
+  recentSection.classList.remove('hidden');
+  recentGrid.innerHTML = '';
+  // Show only top 4 recent games
+  recentGames.slice(0, 4).forEach(game => {
+    recentGrid.appendChild(createGameCard(game));
+  });
+}
+
+function addToRecent(game) {
+  // Remove if already exists to move to top
+  recentGames = recentGames.filter(g => g.id !== game.id);
+  recentGames.unshift(game);
+  // Keep only last 8
+  recentGames = recentGames.slice(0, 8);
+  localStorage.setItem('recentGames', JSON.stringify(recentGames));
+  renderRecentGames();
 }
 
 function playGame(game) {
@@ -98,6 +129,7 @@ function playGame(game) {
   playerTitle.textContent = game.title;
   playerDescription.textContent = game.description;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  addToRecent(game);
 }
 
 function showLibrary() {
@@ -105,6 +137,7 @@ function showLibrary() {
   libraryView.classList.remove('hidden');
   gameIframe.src = '';
   setIsFullscreen(false);
+  renderRecentGames();
 }
 
 function toggleFullscreen() {
@@ -133,3 +166,4 @@ searchInput.addEventListener('input', (e) => {
 
 // Initial render
 renderGames(games);
+renderRecentGames();
